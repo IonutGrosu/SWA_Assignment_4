@@ -1,8 +1,9 @@
 <script lang="ts">
+import { Credentials } from "../model/Models";
+import { login } from "../services/authService";
 export default {
   data() {
     return {
-      responseField: "",
       credentials: {
         username: "",
         password: "",
@@ -11,22 +12,15 @@ export default {
   },
 
   methods: {
-    async register() {
-      const res = await fetch("http://localhost:9090/users", {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        method: "post",
-        body: JSON.stringify(this.credentials),
-      })
+    async handleLogin() {
+      login(this.credentials as Credentials)
         .then((response) => (response.ok ? response : Promise.reject(response)))
         .then((res) => {
           console.log(res.json);
           this.$router.push("/");
         })
         .catch((error) => {
-          console.log(error);
+          if (error.status === 403) console.log("Wrong credentials");
         });
     },
   },
@@ -36,6 +30,5 @@ export default {
 <template>
   <input type="text" v-model="credentials.username" />
   <input type="text" v-model="credentials.password" />
-  <button @click="register">Register</button>
-  {{ responseField }}
+  <button @click="handleLogin">Login</button>
 </template>

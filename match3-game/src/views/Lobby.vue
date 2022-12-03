@@ -8,4 +8,4 @@ export default {
   mounted() {},
 };
 </script>
-<template>Hello</template>
+<template>Lobby</template>
