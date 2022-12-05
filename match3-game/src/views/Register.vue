@@ -16,10 +16,12 @@ export default {
   methods: {
     async handleRegister() {
       register(this.credentials as Credentials)
-        .then((response) => (response.ok ? response : Promise.reject(response)))
+        .then((response) =>
+          response.ok ? response.json() : Promise.reject(response)
+        )
         .then((res) => {
-          console.log(res.json);
           this.$router.push("/");
+          return res.json;
         })
         .catch((error) => {
           if (error.status === 400) console.log("Username already exists");

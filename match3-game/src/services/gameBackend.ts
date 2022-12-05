@@ -1,22 +1,5 @@
 export type Generator<T> = { next: () => T };
 
-export class RandomGenerator implements Generator<string> {
-  private sequence: string;
-
-  constructor(sequence: string) {
-    this.sequence = sequence;
-  }
-
-  getRandomInt(max: number): number {
-    return Math.floor(Math.random() * max);
-  }
-
-  next(): string {
-    const n = this.sequence.charAt(this.getRandomInt(this.sequence.length));
-    return n;
-  }
-}
-
 export type Position = {
   row: number;
   col: number;
@@ -76,12 +59,6 @@ export class Board<T> {
     };
   }
 
-  initBoard(): Board<string> {
-    const generator = new RandomGenerator("ABC");
-    const board = new Board(generator, 5, 5);
-    return board;
-  }
-
   getPiecesArray(): T[] {
     let aux: T[] = [];
 
@@ -108,14 +85,14 @@ export class Board<T> {
     return this.isLegalMove(first, second);
   }
 
-  move(first: Position, second: Position): boolean {
+  move(first: Position, second: Position): Piece<T>[] {
     if (this.isLegalMove(first, second)) {
       this.eventsEnabled = true;
       this.switchPieces(first, second);
       this.scanBoard();
       this.eventsEnabled = false;
     }
-    return null;
+    return this.pieces;
   }
   //    END OF GIVEN FUNCTIONS
 

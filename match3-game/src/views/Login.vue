@@ -14,9 +14,13 @@ export default {
   methods: {
     async handleLogin() {
       login(this.credentials as Credentials)
-        .then((response) => (response.ok ? response : Promise.reject(response)))
+        .then((response) =>
+          response.ok ? response.json() : Promise.reject(response)
+        )
         .then((res) => {
-          console.log(res.json);
+          console.log(res.token);
+          localStorage.setItem("authToken", res.token);
+
           this.$router.push("/");
         })
         .catch((error) => {
