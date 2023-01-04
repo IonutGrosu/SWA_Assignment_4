@@ -3,15 +3,16 @@
     <button
       v-if="!board"
       @click="createBoard"
-      class="btn btn-primary rounded mt-3 mb-3"
+      class="rounded-lg text-4xl font-bold bg-gradient-to-r from-cyan-500/75 to-blue-500/50 text-slate-100 mx-10"
     >
-      Create
+      New game
     </button>
-    <h1>Game</h1>
     <div v-if="board">
       <div class="text-center">
-        <div class="title">Points: {{ score }}</div>
-        <div class="title">Moves left: {{ maxMoves - currentMove }}</div>
+        <div class="text-6xl text-slate-700">Points: {{ score }}</div>
+        <div class="text-2xl text-slate-600 mb-3">
+          Moves left: {{ maxMoves - currentMove }}
+        </div>
       </div>
       <table>
         <tbody>
@@ -20,27 +21,43 @@
               v-for="(piece, index) in row"
               :key="'piece' + index"
               @click="selectElement(piece)"
-              :class="isSelectedElement(piece) ? 'selectedPiece' : ''"
-              class="board-item"
+              :class="isSelectedElement(piece) ? ' border-4 border-black' : ''"
+              class="w-24 h-24 border border-black cursor-pointer"
               :style="'background-color:' + piece.value"
-            ></td>
+            />
           </tr>
         </tbody>
-        <div v-if="completed" class="overlay">
-          <div>GAME FINISHED. YOUR SCORE: {{ score }}</div>
-          <div>
-            <button @click="createBoard" class="btn btn-primary rounded">
-              Again
+      </table>
+      <div
+        v-if="completed"
+        class="fixed top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 w-screen h-screen backdrop-blur-sm"
+      >
+        <div
+          class="bg-gradient-to-r from-cyan-500/75 to-blue-500/50 rounded-lg fixed top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 p-10"
+        >
+          <div class="text-5xl">Finished game with score: {{ score }}</div>
+          <div class="my-6">
+            <button
+              @click="createBoard"
+              class="rounded-lg text-3xl bg-white/75 text-slate-700 mx-10"
+            >
+              New game
+            </button>
+            <button
+              class="rounded-lg text-3xl bg-white/75 text-slate-700 mx-10"
+              @click="goToLeaderboard"
+            >
+              Leaderboard
             </button>
           </div>
         </div>
-      </table>
+      </div>
     </div>
     <div>
       <button
         v-if="selectedElement"
         @click="clearSelection"
-        class="btn btn-primary rounded mt-3"
+        class="bg-gradient-to-r from-cyan-500/75 to-blue-500/50 text-slate-100 mt-3"
       >
         Clear selection
       </button>
@@ -49,22 +66,13 @@
 </template>
 
 <script lang="ts">
-// import {
-//   create,
-//   initalScan,
-//   canMove,
-//   move,
-//   updateGame,
-//   createGame,
-//   saveGameId,
-//   getGame,
-// } from "../services/gameService";
 import {
   initBoard,
   canMove,
   move,
   updateGame,
   createGame,
+  getGameById,
 } from "../services/gameService";
 import { RandomGenerator } from "../utils/generator";
 
@@ -80,20 +88,20 @@ export default {
       maxMoves: 5,
       completed: false,
       gameId: undefined,
+      events: [],
     };
   },
   methods: {
     createBoard() {
       this.clearState();
-      // const initBoard = create(this.generator, 4, 4);
-      // this.board = initalScan(this.generator, initBoard).board;
+      this.board = initBoard(this.generator);
+
+      this.board.addListener((e) => this.events.push(e));
       const id = createGame().then(async (gameInfo) => {
         console.log(gameInfo.id);
+        this.gameId = gameInfo.id;
         await updateGame(gameInfo.id, { board: this.board });
       });
-      // saveGameId(result.id);
-      // this.gameId = result.id;
-      this.board = initBoard(this.generator);
     },
     getBoardRows() {
       const rows = [];
@@ -103,6 +111,8 @@ export default {
       return rows;
     },
     selectElement(piece) {
+      if (this.maxMoves - this.currentMove <= 0) return;
+
       if (!this.selectedElement) {
         this.selectedElement = piece;
         updateGame(this.gameId, { firstSelectedItem: piece });
@@ -118,13 +128,21 @@ export default {
         this.selectedElement.position,
         piece.position
       );
-      console.log(result);
-      // const matches = result.effects.filter((effect) => {
-      //   return effect.kind === `Match`;
-      // });
-      // matches.forEach(() => {
-      //   this.score += 10;
-      // });
+      console.log({ result });
+      console.log(this.events);
+
+      // --- handling score
+      // get all events, filter the match events and add them to the score
+      // reset the events at the end
+
+      const matches = this.events.filter((event) => {
+        return event.kind === `Match`;
+      });
+      matches.forEach((match) => {
+        this.score += 10 * match.match.positions.length;
+      });
+      this.events = [];
+
       this.board.pieces = result;
       this.selectedElement = undefined;
       this.currentMove += 1;
@@ -138,9 +156,14 @@ export default {
         this.finishGame();
       }
     },
-    finishGame() {
+    async finishGame() {
       this.completed = true;
-      updateGame(this.gameId, { completed: true });
+      await updateGame(this.gameId, { completed: true })
+        .then((response) => (response.ok ? response : Promise.reject(response)))
+        .then((res) => res.json())
+        .then((res) => {
+          console.log(res);
+        });
     },
     clearState() {
       this.board = undefined;
@@ -159,52 +182,12 @@ export default {
       this.selectedElement = undefined;
       updateGame(this.gameId, { firstSelectedItem: undefined });
     },
+    goToLeaderboard() {
+      this.$router.push("/leaderboard");
+    },
   },
   beforeMount() {
     this.generator = new RandomGenerator("ABC");
-    // this.generator = new RandomColorGenerator();
-    // if (localStorage.getItem(`currentGameId`)) {
-    //   getGame(localStorage.getItem(`currentGameId`)).then((game) => {
-    //     this.board = game.board;
-    //     this.score = game.score;
-    //     this.gameId = game.id;
-    //     this.currentMove = game.currentMove;
-    //     this.selectedElement = game.firstSelectedItem;
-    //     this.completed = game.completed;
-    //   });
-    // }
   },
 };
 </script>
-<style>
-.board-item {
-  width: 100px;
-  height: 100px;
-  border: 1px solid black;
-  cursor: pointer;
-}
-
-.selectedPiece {
-  border: 5px solid black;
-}
-
-.overlay {
-  background-color: white;
-  border-radius: 6px;
-  padding: 10px;
-  position: absolute;
-  left: 80px;
-  top: 160px;
-}
-
-.game-box {
-  width: 401px;
-  position: relative;
-}
-
-.title {
-  text-align: center;
-  font-size: 2rem;
-  font-weight: 800;
-}
-</style>
